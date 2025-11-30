@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
         env: config,
     });
 
-    let _ = run(app_state).await;
+    run(app_state).await?;
 
     Ok(())
 }

@@ -6,19 +6,32 @@ use axum::{Json, response::IntoResponse};
 use serde_json::json;
 use std::sync::Arc;
 
-pub struct BlockHandler {}
+pub struct BlockHandler;
 
 impl BlockHandler {
     pub async fn get_block_height(
         State(app_state): State<Arc<AppState>>,
     ) -> Result<impl IntoResponse, AppError> {
-        let health_response = json!({
+        let response = json!({
             "status":200,
             "message":"success",
             "data":{
-                "block_height": BlockService::new(app_state.env.clone()).get_block_height().await?
+                "block_height": BlockService::new(app_state.env.clone())?.get_block_height().await?
             }
         });
-        Ok(Json(health_response))
+        Ok(Json(response))
+    }
+
+    pub async fn get_latest_block(
+        State(app_state): State<Arc<AppState>>,
+    ) -> Result<impl IntoResponse, AppError> {
+        let response = json!({
+            "status":200,
+            "message":"success",
+            "data":{
+                "latest_block": BlockService::new(app_state.env.clone())?.get_latest_block().await?
+            }
+        });
+        Ok(Json(response))
     }
 }
