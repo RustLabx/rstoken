@@ -1,20 +1,12 @@
 use anyhow::Result;
-use axum::http::header::{
-    ACCEPT,
-    AUTHORIZATION,
-    CONTENT_DISPOSITION,
-    CONTENT_TYPE,
-};
 use axum::http::Method;
+use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_DISPOSITION, CONTENT_TYPE};
+use ethers::providers::{Http, Provider};
 use sqlx::mysql::MySqlPoolOptions;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tower_http::cors::CorsLayer;
-use wallet::{
-    config::server_config::Config,
-    model::app_model::AppState,
-    router::create_route,
-};
+use wallet::{config::server_config::Config, model::app_model::AppState, router::create_route};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -26,9 +18,12 @@ async fn main() -> Result<()> {
         .connect(&config.dsn)
         .await?;
 
+    let eth_provider = Provider::<Http>::try_from(&config.eth_url)?;
+
     let app_state = Arc::new(AppState {
         db: pool,
         env: config,
+        eth: eth_provider,
     });
 
     run(app_state).await?;

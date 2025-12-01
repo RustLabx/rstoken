@@ -1,18 +1,14 @@
-use crate::config::server_config::Config;
 use anyhow::{Result, anyhow};
-use ethers::prelude::{Block, BlockNumber, H256};
 use ethers::providers::{Http, Middleware, Provider};
+use ethers::types::{Block, BlockNumber, H256};
 
-pub struct BlockService {
-    eth_provider: Provider<Http>,
+pub struct BlockService<'a> {
+    eth_provider: &'a Provider<Http>,
 }
 
-impl BlockService {
-    pub fn new(config: Config) -> Result<Self> {
-        let provider = Provider::<Http>::try_from(&config.eth_url)?;
-        Ok(Self {
-            eth_provider: provider,
-        })
+impl<'a> BlockService<'a> {
+    pub fn new(eth: &'a Provider<Http>) -> Result<Self> {
+        Ok(Self { eth_provider: eth })
     }
 
     pub async fn get_block_height(&self) -> Result<u64> {

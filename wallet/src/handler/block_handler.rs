@@ -16,7 +16,7 @@ impl BlockHandler {
             "status":200,
             "message":"success",
             "data":{
-                "block_height": BlockService::new(app_state.env.clone())?.get_block_height().await?
+                "block_height": BlockService::new(&app_state.eth)?.get_block_height().await?
             }
         });
         Ok(Json(response))
@@ -29,7 +29,7 @@ impl BlockHandler {
             "status":200,
             "message":"success",
             "data":{
-                "latest_block": BlockService::new(app_state.env.clone())?.get_latest_block().await?
+                "latest_block": BlockService::new(&app_state.eth)?.get_latest_block().await?
             }
         });
         Ok(Json(response))
