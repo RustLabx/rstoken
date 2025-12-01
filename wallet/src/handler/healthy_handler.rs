@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use axum::{Json, response::IntoResponse};
+use axum::{response::IntoResponse, Json};
 use serde_json::json;
 
 pub async fn healthy() -> Result<impl IntoResponse, AppError> {

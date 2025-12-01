@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::types::{Block, BlockNumber, H256};
 
