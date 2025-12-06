@@ -1,8 +1,8 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use ethers::middleware::{Middleware, SignerMiddleware};
 use ethers::providers::{Http, Provider};
 use ethers::signers::{LocalWallet, Signer};
-use ethers::types::{Address, H256, Transaction, TransactionRequest};
+use ethers::types::{Address, Transaction, TransactionRequest, H256};
 use ethers::utils::{format_ether, parse_ether};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -35,6 +35,13 @@ impl Keyring {
         self.key_storage.insert(addr, wallet);
         Ok(addr)
     }
+
+    pub fn get_by_address(&self, address: Address) -> Result<LocalWallet> {
+        let wallet = self.key_storage
+            .get(&address)
+            .ok_or_else(|| anyhow!("key not found"))?;
+        Ok(wallet.clone())
+    }
 }
 
 pub struct WalletService<'a> {
@@ -50,7 +57,7 @@ impl<'a> WalletService<'a> {
         })
     }
 
-    pub fn import_private_key(&mut self, private_key: &str) -> Result<Address> {
+    pub async fn import_private_key(&mut self, private_key: &str) -> Result<Address> {
         self.keyring.add_from_private_key(private_key)
     }
 
@@ -69,12 +76,7 @@ impl<'a> WalletService<'a> {
     pub async fn send_transaction(&self, from: &str, to: &str, amount: &str) -> Result<H256> {
         let from_addr = from.parse::<Address>()?;
         let to_addr = to.parse::<Address>()?;
-
-        let key_entry = self
-            .keyring
-            .key_storage
-            .get(&from_addr)
-            .ok_or_else(|| anyhow!("from key not found"))?;
+        let key_entry = self.keyring.get_by_address(to_addr)?;
 
         let chain_id = self.eth_provider.get_chainid().await?.as_u64();
         let signer = key_entry.clone().with_chain_id(chain_id);
