@@ -11,8 +11,8 @@ pub fn create_route(app_state: Arc<AppState>) -> Router {
         .route("/block/height", get(BlockHandler::get_block_height))
         .route("/block/latest", get(BlockHandler::get_latest_block))
         .route("/wallet/import", post(WalletHandler::import_private_key))
-        .route("/wallet/balance", get(WalletHandler::get_balance))
-        .route("/wallet/transaction", get(WalletHandler::get_transaction))
+        .route("/wallet/balance/{address}", get(WalletHandler::get_balance))
+        .route("/wallet/transaction/{tx_hash}", get(WalletHandler::get_transaction))
         .route("/wallet/send", post(WalletHandler::send_transaction))
         .with_state(app_state.clone());
     router

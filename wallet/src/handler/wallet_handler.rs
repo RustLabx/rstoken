@@ -30,7 +30,8 @@ impl WalletHandler {
             "status":200,
             "message":"success",
             "data":{
-                "address": WalletService::new(&app_state.eth)?.import_private_key(&import_key_req.private_key).await?
+                "address": WalletService::new(&app_state.eth, &app_state.mem.keyring)?
+                    .import_private_key(&import_key_req.private_key).await?
             }
         });
         Ok(Json(response))
@@ -44,7 +45,8 @@ impl WalletHandler {
             "status":200,
             "message":"success",
             "data":{
-                "balance": WalletService::new(&app_state.eth)?.get_balance(&address).await?
+                "balance": WalletService::new(&app_state.eth, &app_state.mem.keyring)?
+                    .get_balance(&address).await?
             }
         });
         Ok(Json(response))
@@ -58,7 +60,8 @@ impl WalletHandler {
             "status":200,
             "message":"success",
             "data":{
-                "transaction": WalletService::new(&app_state.eth)?.get_transaction(&tx_hash).await?
+                "transaction": WalletService::new(&app_state.eth, &app_state.mem.keyring)?
+                    .get_transaction(&tx_hash).await?
             }
         });
         Ok(Json(response))
@@ -72,7 +75,8 @@ impl WalletHandler {
             "status":200,
             "message":"success",
             "data":{
-                "transaction_hash": WalletService::new(&app_state.eth)?.send_transaction(&send_tx_req.from, &send_tx_req.to, &send_tx_req.amount).await?
+                "transaction_hash": WalletService::new(&app_state.eth, &app_state.mem.keyring)?
+                    .send_transaction(&send_tx_req.from, &send_tx_req.to, &send_tx_req.amount).await?
             }
         });
         Ok(Json(response))
