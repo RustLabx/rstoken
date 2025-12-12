@@ -16,6 +16,7 @@ pub fn create_route(app_state: Arc<AppState>) -> Router {
         .route("/wallet/transaction/{tx_hash}", get(WalletHandler::get_transaction))
         .route("/wallet/send", post(WalletHandler::send_transaction))
         .route("/erc20/balance", get(ERC20Handler::get_balance))
+        .route("/erc20/send", post(ERC20Handler::send_transaction))
         .with_state(app_state.clone());
     router
 }
