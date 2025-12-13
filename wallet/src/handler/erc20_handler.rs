@@ -24,6 +24,12 @@ pub struct SendTxRequest {
     pub contract: String,
 }
 
+#[derive(Deserialize)]
+pub struct ERC20GetInfoRequest {
+    pub address: String,
+    pub contract_address: String,
+}
+
 impl ERC20Handler {
     pub async fn get_balance(
         State(app_state): State<Arc<AppState>>,
@@ -51,6 +57,19 @@ impl ERC20Handler {
                 "transaction_hash": ERC20Service::new(&app_state.eth, &app_state.mem.keyring)?
                     .send_transaction(&send_tx_req.from, &send_tx_req.to, &send_tx_req.amount, &send_tx_req.contract).await?
             }
+        });
+        Ok(Json(response))
+    }
+
+    pub async fn get_info(
+        State(app_state): State<Arc<AppState>>,
+        Query(req): Query<ERC20GetInfoRequest>,
+    ) -> Result<impl IntoResponse, AppError> {
+        let response = json!({
+            "status":200,
+            "message":"success",
+            "data":ERC20Service::new(&app_state.eth, &app_state.mem.keyring)?
+                .get_info(&req.address, &req.contract_address).await?
         });
         Ok(Json(response))
     }
