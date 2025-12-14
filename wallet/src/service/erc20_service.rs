@@ -78,16 +78,9 @@ impl<'a> ERC20Service<'a> {
         Ok(pending_tx.tx_hash())
     }
 
-    pub async fn get_info(&self, eoa_address: &str, contract_address: &str) -> Result<TokenInfo> {
-        let eoa_addr = eoa_address.parse::<Address>()?;
+    pub async fn get_info(&self, contract_address: &str) -> Result<TokenInfo> {
         let contract_addr = contract_address.parse::<Address>()?;
-        let key_entry = self.keyring.read().await.get_by_address(eoa_addr)?;
-
-        let chain_id = self.eth_provider.get_chainid().await?.as_u64();
-        let signer = key_entry.clone().with_chain_id(chain_id);
-        let client = Arc::new(SignerMiddleware::new(self.eth_provider.clone(), signer));
-
-        let contract = ERC20::new(contract_addr, client);
+        let contract = ERC20::new(contract_addr, Arc::new(self.eth_provider.clone()));
 
         let name = contract.name().call().await?;
         let symbol = contract.symbol().call().await?;
@@ -103,22 +96,12 @@ impl<'a> ERC20Service<'a> {
         })
     }
 
-    pub async fn listen(&self, eoa_address: &str, contract_address: &str) -> Result<()> {
-        let eoa_addr = eoa_address.parse::<Address>()?;
+    pub async fn listen(&self, contract_address: &str) -> Result<String> {
         let contract_addr = contract_address.parse::<Address>()?;
-        let key_entry = self.keyring.read().await.get_by_address(eoa_addr)?;
-
-        let chain_id = self.eth_provider.get_chainid().await?.as_u64();
-        let signer = key_entry.clone().with_chain_id(chain_id);
-
-        let client = Arc::new(SignerMiddleware::new(
-            self.eth_provider.clone(),
-            signer,
-        ));
-
-        let contract = ERC20::new(contract_addr, client);
+        let contract = ERC20::new(contract_addr, Arc::new(self.eth_provider.clone()));
         let filter = contract.transfer_filter();
 
+        // TODO listen should be execute only once
         tokio::spawn(async move {
             let mut stream = filter
                 .stream()
@@ -137,7 +120,7 @@ impl<'a> ERC20Service<'a> {
             }
         });
 
-        Ok(())
+        Ok("listening".to_string())
     }
 
 }
