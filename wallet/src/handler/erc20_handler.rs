@@ -30,6 +30,12 @@ pub struct ERC20GetInfoRequest {
     pub contract_address: String,
 }
 
+#[derive(Deserialize)]
+pub struct ERC20ListenRequest {
+    pub address: String,
+    pub contract_address: String,
+}
+
 impl ERC20Handler {
     pub async fn get_balance(
         State(app_state): State<Arc<AppState>>,
@@ -70,6 +76,19 @@ impl ERC20Handler {
             "message":"success",
             "data":ERC20Service::new(&app_state.eth, &app_state.mem.keyring)?
                 .get_info(&req.address, &req.contract_address).await?
+        });
+        Ok(Json(response))
+    }
+
+    pub async fn listen(
+        State(app_state): State<Arc<AppState>>,
+        Query(req): Query<ERC20ListenRequest>,
+    ) -> Result<impl IntoResponse, AppError> {
+        let response = json!({
+            "status":200,
+            "message":"success",
+            "data":ERC20Service::new(&app_state.eth, &app_state.mem.keyring)?
+                .listen(&req.address, &req.contract_address).await?
         });
         Ok(Json(response))
     }

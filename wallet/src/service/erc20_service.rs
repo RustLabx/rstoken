@@ -6,6 +6,7 @@ use ethers::providers::{Http, Provider};
 use ethers::signers::Signer;
 use ethers::types::{Address, H256};
 use ethers::utils::{format_units, parse_units};
+use futures::StreamExt;
 use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -101,4 +102,42 @@ impl<'a> ERC20Service<'a> {
             total_supply: total_supply_formatted,
         })
     }
+
+    pub async fn listen(&self, eoa_address: &str, contract_address: &str) -> Result<()> {
+        let eoa_addr = eoa_address.parse::<Address>()?;
+        let contract_addr = contract_address.parse::<Address>()?;
+        let key_entry = self.keyring.read().await.get_by_address(eoa_addr)?;
+
+        let chain_id = self.eth_provider.get_chainid().await?.as_u64();
+        let signer = key_entry.clone().with_chain_id(chain_id);
+
+        let client = Arc::new(SignerMiddleware::new(
+            self.eth_provider.clone(),
+            signer,
+        ));
+
+        let contract = ERC20::new(contract_addr, client);
+        let filter = contract.transfer_filter();
+
+        tokio::spawn(async move {
+            let mut stream = filter
+                .stream()
+                .await
+                .expect("failed to create transfer stream");
+
+            println!("开始监听 Transfer 事件...");
+
+            while let Some(Ok(transfer)) = stream.next().await {
+                println!(
+                    "Transfer detected: from {:?} to {:?}, value {}",
+                    transfer.from,
+                    transfer.to,
+                    transfer.value
+                );
+            }
+        });
+
+        Ok(())
+    }
+
 }
