@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::Address;
 use std::collections::HashMap;
@@ -8,20 +8,18 @@ pub struct Keyring {
 }
 
 impl Keyring {
-    pub fn new() -> anyhow::Result<Self> {
-        Ok(Self {
-            data_mapping: HashMap::new(),
-        })
+    pub fn new() -> Self {
+        Self { data_mapping: HashMap::new() }
     }
 
-    pub fn add_from_private_key(&mut self, private_key: &str) -> anyhow::Result<Address> {
+    pub fn add_from_private_key(&mut self, private_key: &str) -> Result<Address> {
         let wallet: LocalWallet = private_key.parse()?;
         let addr = wallet.address();
         self.data_mapping.insert(addr, wallet);
         Ok(addr)
     }
 
-    pub fn get_by_address(&self, address: Address) -> anyhow::Result<LocalWallet> {
+    pub fn get_by_address(&self, address: Address) -> Result<LocalWallet> {
         let wallet = self.data_mapping
             .get(&address)
             .ok_or_else(|| anyhow!("key not found"))?;

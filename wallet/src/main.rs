@@ -3,6 +3,7 @@ use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_DISPOSITION, CONTENT_TYP
 use axum::http::Method;
 use ethers::providers::{Http, Provider};
 use sqlx::mysql::MySqlPoolOptions;
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
@@ -24,7 +25,8 @@ async fn main() -> Result<()> {
     let eth_provider = Provider::<Http>::try_from(&config.eth_url)?;
 
     let mem_store = MemoryStorage {
-        keyring: RwLock::new(Keyring::new()?),
+        keyring: RwLock::new(Keyring::new()),
+        listening: RwLock::new(HashSet::new()),
     };
 
     let app_state = Arc::new(AppState {

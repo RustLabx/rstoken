@@ -33,7 +33,7 @@ impl ERC20Handler {
             "status": 200,
             "message": "success",
             "data": {
-                "balance": ERC20Service::new(&app_state.eth, &app_state.mem.keyring)?
+                "balance": ERC20Service::new(&app_state.eth, &app_state.mem.keyring, &app_state.mem.listening)?
                     .get_balance(&req.address, &req.contract_address).await?
             }
         });
@@ -48,7 +48,7 @@ impl ERC20Handler {
             "status": 200,
             "message": "success",
             "data": {
-                "transaction_hash": ERC20Service::new(&app_state.eth, &app_state.mem.keyring)?
+                "transaction_hash": ERC20Service::new(&app_state.eth, &app_state.mem.keyring, &app_state.mem.listening)?
                     .send_transaction(&send_tx_req.from, &send_tx_req.to, &send_tx_req.amount, &send_tx_req.contract).await?
             }
         });
@@ -62,7 +62,7 @@ impl ERC20Handler {
         let response = json!({
             "status": 200,
             "message": "success",
-            "data": ERC20Service::new(&app_state.eth, &app_state.mem.keyring)?
+            "data": ERC20Service::new(&app_state.eth, &app_state.mem.keyring, &app_state.mem.listening)?
                 .get_info(&contract_address).await?
         });
         Ok(Json(response))
@@ -76,7 +76,7 @@ impl ERC20Handler {
             "status": 200,
             "message": "success",
             "data": {
-                "status": ERC20Service::new(&app_state.eth, &app_state.mem.keyring)?
+                "status": ERC20Service::new(&app_state.eth, &app_state.mem.keyring, &app_state.mem.listening)?
                     .listen(&contract_address).await?
             }
         });

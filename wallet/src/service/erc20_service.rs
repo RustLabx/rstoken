@@ -8,6 +8,7 @@ use ethers::types::{Address, H256};
 use ethers::utils::{format_units, parse_units};
 use futures::StreamExt;
 use serde::Serialize;
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -35,13 +36,15 @@ pub struct TokenInfo {
 pub struct ERC20Service<'a> {
     eth_provider: &'a Provider<Http>,
     keyring: &'a RwLock<Keyring>,
+    listening: &'a RwLock<HashSet<Address>>,
 }
 
 impl<'a> ERC20Service<'a> {
-    pub fn new(eth: &'a Provider<Http>, ring: &'a RwLock<Keyring>) -> Result<Self> {
+    pub fn new(eth: &'a Provider<Http>, ring: &'a RwLock<Keyring>, listening: &'a RwLock<HashSet<Address>>) -> Result<Self> {
         Ok(Self {
             eth_provider: eth,
             keyring: ring,
+            listening,
         })
     }
 
@@ -96,19 +99,24 @@ impl<'a> ERC20Service<'a> {
         })
     }
 
-    pub async fn listen(&self, contract_address: &str) -> Result<String> {
+    pub async fn listen(&mut self, contract_address: &str) -> Result<String> {
         let contract_addr = contract_address.parse::<Address>()?;
+        // listen should be executed only once
+        if self.listening.read().await.contains(&contract_addr) {
+            return Ok("already listening".to_string());
+        }
+        self.listening.write().await.insert(contract_addr);
+
         let contract = ERC20::new(contract_addr, Arc::new(self.eth_provider.clone()));
         let filter = contract.transfer_filter();
 
-        // TODO listen should be execute only once
         tokio::spawn(async move {
             let mut stream = filter
                 .stream()
                 .await
                 .expect("failed to create transfer stream");
 
-            println!("开始监听 Transfer 事件...");
+            println!("Start listening transfer event...");
 
             while let Some(Ok(transfer)) = stream.next().await {
                 println!(
