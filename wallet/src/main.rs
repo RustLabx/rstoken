@@ -1,7 +1,7 @@
 use anyhow::Result;
 use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_DISPOSITION, CONTENT_TYPE};
 use axum::http::Method;
-use ethers::providers::{Http, Provider};
+use ethers::providers::{Http, Provider, Ws};
 use sqlx::mysql::MySqlPoolOptions;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -24,6 +24,19 @@ async fn main() -> Result<()> {
 
     let eth_provider = Provider::<Http>::try_from(&config.eth_url)?;
 
+    // Try to initialize WebSocket Provider (for event listening)
+    // If connection fails, will use None and fallback to HTTP Provider
+    let eth_ws_provider = match Provider::<Ws>::connect(&config.eth_ws_url()).await {
+        Ok(provider) => {
+            println!("✅ WebSocket Provider connected successfully: {}", config.eth_ws_url());
+            Some(provider)
+        }
+        Err(e) => {
+            eprintln!("⚠️  WebSocket Provider connection failed: {}, will use HTTP Provider for event listening: {}", config.eth_ws_url(), e);
+            None
+        }
+    };
+
     let mem_store = MemoryStorage {
         keyring: RwLock::new(Keyring::new()),
         listening: RwLock::new(HashSet::new()),
@@ -33,6 +46,7 @@ async fn main() -> Result<()> {
         db: pool,
         env: config,
         eth: eth_provider,
+        eth_ws: eth_ws_provider,
         mem: mem_store,
     });
 
@@ -42,10 +56,10 @@ async fn main() -> Result<()> {
 }
 
 async fn run(app_state: Arc<AppState>) -> Result<()> {
-    // 跨域
+    // CORS configuration
     let orgins = [
         "http://localhost:3000".parse()?,
-        // 添加其他允许的域名
+        // Add other allowed origins here
     ];
     let cors = CorsLayer::new()
         .allow_origin(orgins)

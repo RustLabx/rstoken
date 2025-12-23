@@ -47,7 +47,7 @@ impl<'a> EtherService<'a> {
             .to(to_addr)
             .value(amount);
 
-        // 发送交易并获取 transaction hash
+        // Send transaction and get transaction hash
         let pending_tx = client.send_transaction(tx, None).await?;
         Ok(pending_tx.tx_hash())
     }

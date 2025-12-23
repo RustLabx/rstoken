@@ -2,7 +2,7 @@ use crate::model::keyring::Keyring;
 use anyhow::Result;
 use ethers::contract::abigen;
 use ethers::middleware::{Middleware, SignerMiddleware};
-use ethers::providers::{Http, Provider};
+use ethers::providers::{Http, Provider, Ws};
 use ethers::signers::Signer;
 use ethers::types::{Address, H256};
 use ethers::utils::{format_units, parse_units};
@@ -35,14 +35,21 @@ pub struct TokenInfo {
 
 pub struct ERC20Service<'a> {
     eth_provider: &'a Provider<Http>,
+    ws_provider: Option<&'a Provider<Ws>>,
     keyring: &'a RwLock<Keyring>,
     listening: &'a RwLock<HashSet<Address>>,
 }
 
 impl<'a> ERC20Service<'a> {
-    pub fn new(eth: &'a Provider<Http>, ring: &'a RwLock<Keyring>, listening: &'a RwLock<HashSet<Address>>) -> Result<Self> {
+    pub fn new(
+        eth: &'a Provider<Http>,
+        eth_ws: Option<&'a Provider<Ws>>,
+        ring: &'a RwLock<Keyring>,
+        listening: &'a RwLock<HashSet<Address>>,
+    ) -> Result<Self> {
         Ok(Self {
             eth_provider: eth,
+            ws_provider: eth_ws,
             keyring: ring,
             listening,
         })
@@ -107,28 +114,80 @@ impl<'a> ERC20Service<'a> {
         }
         self.listening.write().await.insert(contract_addr);
 
-        let contract = ERC20::new(contract_addr, Arc::new(self.eth_provider.clone()));
-        let filter = contract.transfer_filter();
+        // Prefer WebSocket Provider, fallback to HTTP Provider if unavailable
+        let use_ws = self.ws_provider.is_some();
+        let provider_type = if use_ws { "WebSocket" } else { "HTTP" };
+        
+        println!("Using {} Provider to listen for Transfer events on contract {}", provider_type, contract_addr);
 
-        tokio::spawn(async move {
-            let mut stream = filter
-                .stream()
-                .await
-                .expect("failed to create transfer stream");
+        if let Some(ws_provider) = self.ws_provider {
+            // Use WebSocket Provider (real-time push, better performance)
+            let contract = ERC20::new(contract_addr, Arc::new(ws_provider.clone()));
+            let filter = contract.transfer_filter();
 
-            println!("Start listening transfer event...");
+            tokio::spawn(async move {
+                match filter.stream().await {
+                    Ok(mut stream) => {
+                        println!("✅ WebSocket event stream created successfully, starting to listen for Transfer events...");
 
-            while let Some(Ok(transfer)) = stream.next().await {
-                println!(
-                    "Transfer detected: from {:?} to {:?}, value {}",
-                    transfer.from,
-                    transfer.to,
-                    transfer.value
-                );
-            }
-        });
+                        while let Some(result) = stream.next().await {
+                            match result {
+                                Ok(transfer) => {
+                                    println!(
+                                        "Transfer detected: from {:?} to {:?}, value {}",
+                                        transfer.from,
+                                        transfer.to,
+                                        transfer.value
+                                    );
+                                }
+                                Err(e) => {
+                                    eprintln!("⚠️  Error receiving event: {}", e);
+                                    // Can choose to continue listening or exit
+                                }
+                            }
+                        }
+                        println!("⚠️  WebSocket event stream ended");
+                    }
+                    Err(e) => {
+                        eprintln!("❌ Failed to create WebSocket event stream: {}", e);
+                    }
+                }
+            });
+        } else {
+            // Fallback to HTTP Provider (polling mode)
+            let contract = ERC20::new(contract_addr, Arc::new(self.eth_provider.clone()));
+            let filter = contract.transfer_filter();
 
-        Ok("listening".to_string())
+            tokio::spawn(async move {
+                match filter.stream().await {
+                    Ok(mut stream) => {
+                        println!("✅ HTTP event stream created successfully, starting to poll for Transfer events...");
+
+                        while let Some(result) = stream.next().await {
+                            match result {
+                                Ok(transfer) => {
+                                    println!(
+                                        "Transfer detected: from {:?} to {:?}, value {}",
+                                        transfer.from,
+                                        transfer.to,
+                                        transfer.value
+                                    );
+                                }
+                                Err(e) => {
+                                    eprintln!("⚠️  Error receiving event: {}", e);
+                                }
+                            }
+                        }
+                        println!("⚠️  HTTP event stream ended");
+                    }
+                    Err(e) => {
+                        eprintln!("❌ Failed to create HTTP event stream: {}", e);
+                    }
+                }
+            });
+        }
+
+        Ok(format!("listening with {}", provider_type))
     }
 
 }

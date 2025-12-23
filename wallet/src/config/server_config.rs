@@ -13,4 +13,13 @@ impl Config {
             eth_url: std::env::var("ETH_URL").expect("ETH_URL must be set"),
         }
     }
+
+    /// Convert HTTP URL to WebSocket URL
+    /// http://localhost:8545 -> ws://localhost:8545
+    /// https://mainnet.infura.io/v3/xxx -> wss://mainnet.infura.io/v3/xxx
+    pub fn eth_ws_url(&self) -> String {
+        self.eth_url
+            .replace("http://", "ws://")
+            .replace("https://", "wss://")
+    }
 }
